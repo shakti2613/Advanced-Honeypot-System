@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Honeypot System - Real-Time Monitoring</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header .status {
+            color: #4ecdc4;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            background: #4ecdc4;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 25px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(78, 205, 196, 0.3);
+        }
+
+        .stat-card .label {
+            color: #a0a0a0;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section h2 {
+            margin-bottom: 20px;
+            color: #4ecdc4;
+            font-size: 1.5em;
+            border-bottom: 2px solid rgba(78, 205, 196, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .attack-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .attack-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .attack-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .attack-item.HIGH {
+            border-left-color: #ff6b6b;
+        }
+
+        .attack-item.MEDIUM {
+            border-left-color: #ffa500;
+        }
+
+        .attack-item.LOW {
+            border-left-color: #4ecdc4;
+        }
+
+        .attack-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .attack-type {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .severity-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .severity-badge.HIGH {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .severity-badge.MEDIUM {
+            background: #ffa500;
+            color: white;
+        }
+
+        .severity-badge.LOW {
+            background: #4ecdc4;
+            color: white;
+        }
+
+        .attack-details {
+            color: #c0c0c0;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .attack-details strong {
+            color: #4ecdc4;
+        }
+
+        .port-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .port-bar {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .port-label {
+            min-width: 80px;
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+
+        .bar-container {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            height: 30px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .refresh-timer {
+            text-align: center;
+            color: #a0a0a0;
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(78, 205, 196, 0.5);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(78, 205, 196, 0.8);
+        }
+
+        .no-attacks {
+            text-align: center;
+            padding: 50px;
+            color: #a0a0a0;
+        }
+
+        .timestamp {
+            font-size: 0.85em;
+            color: #888;
+        }
+
+        .data-preview {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            color: #4ecdc4;
+            overflow-x: auto;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .ports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .port-status-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(78, 205, 196, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .port-status-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(78, 205, 196, 0.8);
+            box-shadow: 0 5px 20px rgba(78, 205, 196, 0.3);
+        }
+
+        .port-status-card.attacked {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            animation: pulse-attack 2s infinite;
+        }
+
+        @keyframes pulse-attack {
+            0%, 100% { 
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+            }
+            50% { 
+                box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+            }
+        }
+
+        .port-number {
+            font-size: 2em;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+
+        .port-name {
+            color: #a0a0a0;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .port-attacks {
+            color: #4ecdc4;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .port-status-card.attacked .port-attacks {
+            color: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔒 Advanced Honeypot System</h1>
+        <div class="status">
+            <div class="status-indicator"></div>
+            <span>Real-Time Network Monitoring Active</span>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <div class="stat-card">
+            <div class="label">Total Attempts</div>
+            <div class="value" id="totalAttempts">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Unique IPs</div>
+            <div class="value" id="uniqueIPs">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Ports Monitored</div>
+            <div class="value" id="portsMonitored">12</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Latest Attack</div>
+            <div class="value" id="latestAttackTime">--</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🔍 Monitored Ports Status</h2>
+        <div class="ports-grid" id="portsGrid">
+            <div class="port-status-card">
+                <div class="port-number">21</div>
+                <div class="port-name">FTP</div>
+                <div class="port-attacks" id="port-21">0 attacks</div>
+            </div>
+            <div class="port-status-card">
+                <div class="port-number">22</div>
+                <div class="port-name">SSH</div>
+                <div class="port-attacks" id="port-22">0 attacks</div>
+            </div>
+            <div class="port-status-card">
+                <div class="port-number">23</div>
+                <div class="port-name">Telnet</div>
+                <div class="port-attacks" id="port-23">0 attacks</div>
+            </div>
+            <div class="port-status-card">
+                <div class="port-number">25</div>
+                <div class="port-name">SMTP</div>
+                <div class="port-attacks" id="port-25">0 attacks</div>
+            </div>
+            <div class="port-status-card">
+                <div class="port-number">80</div>
+                <div class="port-name">HTTP</div>
+                <div class="port-attacks" id="port-80">0 attacks</div>
+            </div>
+            <div class="port-status-card">
+                <div class="port-number">110</div>
+                <div class="port-name">POP3</div>
+                <div class="port-attacks" id="port-110">0 attacks</div>
+            </div>
+            <div class="port-status-card">
+                <div class="port-number">143</div>
+                <div class="port-name">IMAP</div>
+                <div class="port-attacks" id="port-143">0 attacks</div>
+            </div>
+            <div class="port-status-card">
+                <div class="port-number">443</div>
+                <div class="port-name">HTTPS</div>
+                <div class="port-attacks" id="port-443">0 attacks</div>
+            </div>
+            <div class="port-status-card">
+                <div class="port-number">3306</div>
+                <div class="port-name">MySQL</div>
+                <div class="port-attacks" id="port-3306">0 attacks</div>
+            </div>
+            <div class="port-status-card">
+                <div class="port-number">3389</div>
+                <div class="port-name">RDP</div>
+                <div class="port-attacks" id="port-3389">0 attacks</div>
+            </div>
+            <div class="port-status-card">
+                <div class="port-number">5432</div>
+                <div class="port-name">PostgreSQL</div>
+                <div class="port-attacks" id="port-5432">0 attacks</div>
+            </div>
+            <div class="port-status-card">
+                <div class="port-number">8080</div>
+                <div class="port-name">HTTP-Alt</div>
+                <div class="port-attacks" id="port-8080">0 attacks</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📊 Top Targeted Ports</h2>
+        <div class="port-chart" id="portChart">
+            <div class="no-attacks">
+                <p>⏳ Monitoring active - Waiting for network activity...</p>
+                <p style="font-size: 0.85em; color: #888; margin-top: 10px;">
+                    Try connecting from another device or wait for internet scans
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🚨 Recent Attack Log</h2>
+        <div class="attack-list" id="attackList">
+            <div class="no-attacks">
+                <h3>🎯 Waiting for Network Connections...</h3>
+                <p style="margin-top: 15px; color: #a0a0a0;">
+                    The honeypot is monitoring 12 ports.<br>
+                    Any connection from another device will appear here!<br><br>
+                    <strong>Test it:</strong><br>
+                    • Connect from your phone/tablet on same network<br>
+                    • Use test script: <code>python3 test_honeypot.py</code><br>
+                    • Or expose to internet for real attacks<br><br>
+                    <em style="color: #4ecdc4;">System is actively listening...</em>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="refresh-timer">
+        Auto-refresh every 2 seconds • Last updated: <span id="lastUpdate">Never</span>
+    </div>
+
+    <script>
+        let lastAttackCount = 0;
+        const allPorts = [21, 22, 23, 25, 80, 110, 143, 443, 3306, 3389, 5432, 8080];
+
+        function updatePortCards(portData) {
+            // Reset all port cards
+            allPorts.forEach(port => {
+                const portCard = document.querySelector(`#port-${port}`).parentElement;
+                portCard.classList.remove('attacked');
+                const attacksElement = document.getElementById(`port-${port}`);
+                const count = portData[port] || 0;
+                attacksElement.textContent = `${count} attack${count !== 1 ? 's' : ''}`;
+                
+                if (count > 0) {
+                    portCard.classList.add('attacked');
+                }
+            });
+        }
+
+        function updateDashboard() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    // Update stats
+                    document.getElementById('totalAttempts').textContent = data.total_attempts;
+                    document.getElementById('uniqueIPs').textContent = data.unique_ips;
+                    
+                    // Update port cards with attack counts
+                    const portCounts = {};
+                    allPorts.forEach(port => portCounts[port] = 0);
+                    Object.keys(data.top_ports).forEach(port => {
+                        portCounts[port] = data.top_ports[port];
+                    });
+                    updatePortCards(portCounts);
+                    
+                    // Update port chart
+                    if (Object.keys(data.top_ports).length > 0) {
+                        const maxCount = Math.max(...Object.values(data.top_ports));
+                        const portChartHTML = Object.entries(data.top_ports)
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 10)
+                            .map(([port, count]) => {
+                                const percentage = (count / maxCount) * 100;
+                                return `
+                                    <div class="port-bar">
+                                        <div class="port-label">Port ${port}</div>
+                                        <div class="bar-container">
+                                            <div class="bar-fill" style="width: ${percentage}%">
+                                                ${count} attack${count !== 1 ? 's' : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+                        document.getElementById('portChart').innerHTML = portChartHTML;
+                    }
+                    
+                    // Update attack list
+                    if (data.recent_attacks && data.recent_attacks.length > 0) {
+                        const attackListHTML = data.recent_attacks.map(attack => {
+                            const dataPreview = attack.data.substring(0, 200);
+                            return `
+                                <div class="attack-item ${attack.severity}">
+                                    <div class="attack-header">
+                                        <div class="attack-type">${attack.attack_type}</div>
+                                        <div class="severity-badge ${attack.severity}">${attack.severity}</div>
+                                    </div>
+                                    <div class="attack-details">
+                                        <strong>Source IP:</strong> ${attack.ip}<br>
+                                        <strong>Port:</strong> ${attack.port} (${attack.protocol})<br>
+                                        <strong>Time:</strong> <span class="timestamp">${attack.timestamp}</span>
+                                        <div class="data-preview">${dataPreview}${attack.data.length > 200 ? '...' : ''}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        document.getElementById('attackList').innerHTML = attackListHTML;
+                        
+                        // Update latest attack time
+                        const latestTime = new Date(data.recent_attacks[0].timestamp);
+                        const now = new Date();
+                        const diffSeconds = Math.floor((now - latestTime) / 1000);
+                        document.getElementById('latestAttackTime').textContent = 
+                            diffSeconds < 60 ? `${diffSeconds}s ago` : `${Math.floor(diffSeconds/60)}m ago`;
+                    }
+                    
+                    // Update last refresh time
+                    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+                    
+                    // Play alert sound for new attacks (optional)
+                    if (data.total_attempts > lastAttackCount && lastAttackCount > 0) {
+                        // New attack detected
+                        console.log('New attack detected!');
+                    }
+                    lastAttackCount = data.total_attempts;
+                })
+                .catch(error => console.error('Error fetching data:', error));
+        }
+
+        // Update dashboard every 2 seconds
+        updateDashboard();
+        setInterval(updateDashboard, 2000);
+    </script>
+</body>
+</html>
